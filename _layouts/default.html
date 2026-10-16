@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="{{ site.lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% assign is_home = false %}{% if page.url == '/' %}{% assign is_home = true %}{% endif %}
+  <title>{% if is_home %}{{ site.title }}{% else %}{{ page.title }} · {{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ site.description }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body{% if is_home %} class="home"{% endif %}>
+  <header class="site-header">
+    <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+    {% unless is_home %}<a class="back" href="{{ '/' | relative_url }}">← 글 목록</a>{% endunless %}
+  </header>
+  <main class="content">
+    {% if is_home %}<p class="tagline">{{ site.description }}</p>{% endif %}
+    {{ content }}
+  </main>
+  <footer class="site-footer">© {{ 'now' | date: '%Y' }} {{ site.title }}</footer>
+  <script type="module">
+    // Jekyll은 mermaid를 그리지 않으므로 코드 블록을 다이어그램으로 바꿈
+    const blocks = document.querySelectorAll('.language-mermaid code');
+    if (blocks.length) {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs');
+      for (const code of blocks) {
+        const pre = document.createElement('pre');
+        pre.className = 'mermaid';
+        pre.textContent = code.textContent;
+        code.closest('.language-mermaid').replaceWith(pre);
+      }
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: 'Pretendard Variable, sans-serif' });
+      await mermaid.run();
+    }
+  </script>
+</body>
+</html>

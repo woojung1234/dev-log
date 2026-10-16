@@ -27,7 +27,7 @@
 | 영역 | 기술 | 이 프로젝트에서의 용도 |
 |------|------|------------------|
 | 프레임워크 | React Native 0.81 + Expo SDK 54 | iOS·Android를 한 코드로 혼자 개발하고, 네이티브 설정은 config plugin으로 관리하기 위해 |
-| 빌드/배포 | EAS Build, Continuous Native Generation | `android/`, `ios/`를 커밋하지 않고 `app.json`을 유일한 설정 출처로 두기 위해 |
+| 빌드/배포 | Continuous Native Generation + 로컬 빌드(Gradle·Xcode) | `android/`, `ios/`를 커밋하지 않고 `app.json`을 유일한 설정 출처로 두기 위해. 초기에는 EAS Build를 쓰다가 로컬 빌드로 바꿈 |
 | 상태 관리 | Zustand 5 (+ `persist`) | 도메인별 전역 상태, 셀렉터 구독, AsyncStorage 영속화 |
 | API 통신 | Axios 인스턴스 2개 + 인터셉터 | 일반 API와 AI 분석/채팅 서버를 나누고, 토큰 주입·갱신을 한 곳에서 처리하기 위해 |
 | AI 채팅 | SSE (`expo/fetch` 스트림) | 응답을 토큰 단위로 받아 바로 보여주기 위해 |
@@ -57,12 +57,12 @@
 
 ### 왜 선택했나
 
-프론트엔드 개발자가 저 혼자였기 때문에 iOS와 Android를 따로 만들 수는 없었습니다. React Native에 Expo를 더하면 소셜 로그인, 푸시, 인앱 결제 같은 네이티브 기능을 쓰면서도 네이티브 설정을 `app.json`과 config plugin으로 관리할 수 있습니다. 빌드는 EAS가 클라우드에서 해 주기 때문에 로컬 환경에 덜 묶인다는 점도 고려했습니다. **[확인 필요: 선택 당시 실제 이유]**
+프론트엔드 개발자가 저 혼자였기 때문에 iOS와 Android를 따로 만들 수는 없었습니다. React Native에 Expo를 더하면 소셜 로그인, 푸시, 인앱 결제 같은 네이티브 기능을 쓰면서도 네이티브 설정을 `app.json`과 config plugin으로 관리할 수 있습니다. **[확인 필요: 선택 당시 실제 이유]**
 
 ### 어떻게 적용했나
 
-- **CNG(Continuous Native Generation).** `android/`, `ios/` 폴더는 `.gitignore`에 넣고 EAS 빌드 때 생성합니다. Android는 `eas-build-post-install` 훅에서 `expo prebuild`를 명시적으로 실행합니다. Android 매니페스트 수정이나 Gradle 의존성 제외처럼 네이티브 쪽에 손대야 하는 작업은 모두 커스텀 config plugin(`app.plugin.js`)에 코드로 남겼습니다.
-- **EAS 프로필.** `development`(dev client), `preview`(내부 배포), `production`(스토어) 세 개로 나눴습니다.
+- **CNG(Continuous Native Generation).** `android/`, `ios/` 폴더는 `.gitignore`에 넣고, 빌드할 때마다 `expo prebuild`로 생성합니다. Android 매니페스트 수정이나 Gradle 의존성 제외처럼 네이티브 쪽에 손대야 하는 작업은 모두 커스텀 config plugin(`app.plugin.js`)에 코드로 남겼습니다.
+- **EAS에서 로컬 빌드로.** 처음에는 EAS Build의 `development`(dev client)·`preview`(내부 배포)·`production`(스토어) 프로필로 클라우드에서 빌드했습니다. 지금은 `expo prebuild`로 네이티브 프로젝트를 만든 뒤 Android는 Gradle, iOS는 Xcode로 직접 빌드합니다. 바꾼 이유는 세 가지입니다. 클라우드 빌드 비용이 들었고, 대기열과 빌드 시간이 길었고, 빌드가 실패하면 로컬에서 바로 재현해 고치는 편이 빨랐습니다. 네이티브 설정이 모두 `app.json`과 config plugin에 있었기 때문에, 빌드 장소를 옮겨도 따로 손볼 네이티브 코드는 없었습니다.
 - **폴더 구조.** 처음에는 `screens/`, `components/` 아래에 파일을 대부분 평평하게 두었습니다. 화면이 늘어난 뒤 도메인별 폴더(`account`, `playing`, `payment`, `notice` …)와 `index.js` 배럴 파일 구조로 바꿨습니다(`072e0c5`, `1381639`). 836줄짜리 `endpoints.js`도 도메인별 API 파일로 나눴습니다(`3691c16`, 현재 15개).
 
 ### 해결한 문제
@@ -76,7 +76,7 @@
 ### 결과
 
 - 네이티브 폴더를 커밋하지 않아도 같은 빌드를 재현할 수 있게 됐습니다. 이후 R8 설정처럼 네이티브 옵션을 바꿀 때도 `app.json`만 고쳤습니다(`8152ba9`).
-- 빌드 소요 시간·스토어 심사 통과 횟수: **[수치 입력: EAS 빌드 평균 소요 시간, 출시한 스토어 버전 수 등]**
+- 빌드 소요 시간·스토어 심사 통과 횟수: **[수치 입력: EAS 대비 로컬 빌드 소요 시간, 출시한 스토어 버전 수 등]**
 
 ---
 
