@@ -10,15 +10,76 @@
   <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
 </head>
 <body{% if is_home %} class="home"{% endif %}>
-  <header class="site-header">
-    <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
-    {% unless is_home %}<a class="back" href="{{ '/' | relative_url }}">← 글 목록</a>{% endunless %}
-  </header>
+  {% unless is_home %}<div class="progress" aria-hidden="true"></div>{% endunless %}
+  <div class="site-header-wrap">
+    <header class="site-header">
+      <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+      {% unless is_home %}<a class="back" href="{{ '/' | relative_url }}">← 글 목록</a>{% endunless %}
+    </header>
+  </div>
   <main class="content">
     {% if is_home %}<p class="tagline">{{ site.description }}</p>{% endif %}
     {{ content }}
   </main>
   <footer class="site-footer">© {{ 'now' | date: '%Y' }} {{ site.title }}</footer>
+  {% unless is_home %}
+  <script>
+    // 글 페이지 꾸밈: 읽는 시간, 섹션 번호 배지, 목차, 진행 바
+    (() => {
+      const main = document.querySelector('.content');
+      const h1 = main.querySelector('h1');
+      if (h1) {
+        const minutes = Math.max(1, Math.round(main.textContent.replace(/\s+/g, '').length / 600));
+        const sections = main.querySelectorAll('h2').length;
+        const meta = document.createElement('div');
+        meta.className = 'post-meta';
+        meta.innerHTML = `<span>읽는 시간 약 ${minutes}분</span><span>섹션 ${sections}개</span>`;
+        h1.after(meta);
+      }
+
+      const heads = [...main.querySelectorAll('h2[id]')];
+      for (const h of heads) {
+        const m = h.firstChild?.nodeType === 3 && h.firstChild.textContent.match(/^(\d+)\.\s*/);
+        if (m) {
+          h.firstChild.textContent = h.firstChild.textContent.slice(m[0].length);
+          const num = document.createElement('span');
+          num.className = 'num';
+          num.textContent = m[1];
+          h.prepend(num);
+        }
+      }
+
+      if (heads.length > 2) {
+        const toc = document.createElement('nav');
+        toc.className = 'toc';
+        toc.setAttribute('aria-label', '목차');
+        toc.innerHTML = '<p class="toc-title">목차</p>';
+        const links = heads.map((h) => {
+          const a = document.createElement('a');
+          a.href = '#' + h.id;
+          a.textContent = [...h.childNodes].filter((n) => !n.classList?.contains('num')).map((n) => n.textContent).join('').trim();
+          toc.append(a);
+          return a;
+        });
+        document.body.append(toc);
+        const onScroll = () => {
+          let i = heads.findLastIndex((h) => h.getBoundingClientRect().top < 160);
+          links.forEach((a, j) => a.classList.toggle('active', j === Math.max(i, 0)));
+        };
+        addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      }
+
+      const bar = document.querySelector('.progress');
+      const progress = () => {
+        const max = document.documentElement.scrollHeight - innerHeight;
+        bar.style.transform = `scaleX(${max > 0 ? scrollY / max : 0})`;
+      };
+      addEventListener('scroll', progress, { passive: true });
+      progress();
+    })();
+  </script>
+  {% endunless %}
   <script type="module">
     // Jekyll은 mermaid를 그리지 않으므로 코드 블록을 다이어그램으로 바꿈
     const blocks = document.querySelectorAll('.language-mermaid code');
